@@ -27,6 +27,7 @@ CORS(app)
 class user_genres(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     genre = db.Column(db.String(80), nullable=True)
+    name = db.Column(db.String(80), nullable=True)
     spotify_user_id = db.Column(db.String(120), nullable=True)
 
     @property
@@ -184,6 +185,13 @@ def spotify_redirect():
         for genre in artist['genres']:
             genre_data = user_genres(genre=genre, spotify_user_id=user_id_reponse['id'])
             db.session.add(genre_data)
+            db.session.commit()
+
+    for artist in data['items']:
+        print(artist['name'])
+        for name in artist['name']:
+            name_data = user_genres(name=name, spotify_user_id=user_id_reponse['id'])
+            db.session.add(name_data)
             db.session.commit()
             
     uid=user_id_reponse['id']
