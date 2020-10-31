@@ -1,7 +1,21 @@
-data = [{
+d3.json("/api/artists").then(artists => {
+  console.log(artists)
+  // build dropdown!
+
+})
+
+d3.json('https://api.spotify.com/v1/artists/${id}/top-tracks').then(tracks => {
+  // https://api.spotify.com/v1/audio-features
+  // with a list of track ids
+
+  // loop through tracks and get values and categories for radar into an array
+  values = []
+  categories = []
+
+  data = [{
     type: 'scatterpolar',
-    r: [39, 28, 8, 7, 28, 39],
-    theta: ['A','B','C', 'D', 'E', 'A'],
+    r: values,
+    theta: categories,
     fill: 'toself'
   }]
   
@@ -16,3 +30,6 @@ data = [{
   }
   
   Plotly.newPlot("myDiv", data, layout)
+
+})
+
