@@ -4,14 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
+<style>h1 {
+    text-align: center;
+  }
+</style>
+  
 <body>
-    <h1>Route</h1>
+    <h1>Spotify Wizards!</h1>
     <a href="{{ url_for('authorization')}}">authorization</a>
-    <p>{{ uid}}</p> 
-    <div id="myDiv"></div>
-    <script src="http://d3js.org/d3.v5.min.js"></script>
-    <script src="/static/js/plot.js"></script> 
+    <!-- <button href="{{ url_for('authorization')}}">authorization</button> -->
+    <!-- <p>{{ uid}}</p> 
+    <p>{{ response}}</p>  -->
 </body>
 </html>

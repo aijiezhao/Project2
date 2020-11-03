@@ -27,30 +27,31 @@ CORS(app)
 class user_genres(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     genre = db.Column(db.String(80), nullable=True)
-    # name = db.Column(db.String(80), nullable=True)
-    # spotify_user_id = db.Column(db.String(120), nullable=True)
+    spotify_user_id = db.Column(db.String(120), nullable=True)
 
     @property
     def serialize(self):
        """Return object data in easily serializable format"""
        return {
+           'spotify_user_id':self.spotify_user_id,
            'genre':self.genre
        }
-
-class user_artists(db.Model):
+class user_data(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     artist = db.Column(db.String(80), nullable=True)
-    artist_uri = db.Column(db.String(80), nullable=True)
-    # spotify_user_id = db.Column(db.String(120), nullable=True)
+    artist_followers = db.Column(db.String(80), nullable=True)
+    artist_popularity = db.Column(db.String(80), nullable=True)
+    artist_images = db.Column(db.String(80), nullable=True)
 
     @property
     def serialize(self):
        """Return object data in easily serializable format"""
        return {
            'artist':self.artist,
-           'artist_uri':self.artist_uri
+           'artist_followers':self.artisartist_followerst_uri,
+           'artist_popularity':self.artist_popularity,
+           'artist_images':self.artist_images
        }
-
 #Create the DB
 db.create_all()
 """
@@ -83,7 +84,56 @@ def index():
     This is the default front facing home route
     :return:
     """
-    return render_template('home.html')
+    return render_template('home.html', uid=uid)
+
+
+@app.route('/test')
+def test():
+    """
+    This route queries for the user's most popular artists and displays their popularity in a bar chart
+    :return:
+    """
+    token = request.args['token']
+
+    offset_val = 0
+
+    # Define request parameters here
+    query_params = {
+        "time_range": "long_term",
+        "offset": offset_val,
+        "limit": 50
+    }
+
+    # Define authorization headers here. Note the token from before is used in this request
+    # with the Bearer text included.
+    req_headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    #Get the users profile ID
+    user_resp = requests.get(f"{BASE_URL}/v1/me", headers=req_headers)
+    # Get the response from the spotify API using the correct token in the headers. This should return user information
+    final_resp = requests.get(f"{BASE_URL}/v1/me/top/artists", params=query_params, headers=req_headers)
+
+
+    # Debug the final response
+    data = final_resp.json()
+    user_id_reponse = user_resp.json()
+
+    uid=user_id_reponse['id']
+    print("UID: " + uid)
+    # Making a list
+    # then we say we want to add in a dictionary
+    # In that dictionary we want the name and the popularity
+    artist_popularity_list = []
+    for artist in data['items']:
+        artist_popularity = {}
+        artist_popularity['name'] = artist['name']
+        artist_popularity['popularity'] = artist['popularity']
+        artist_popularity_list.append(artist_popularity)
+
+    return render_template('top-artists.html', data=artist_popularity_list)
+
 
 
 
@@ -131,7 +181,7 @@ def spotify_redirect():
     # Get the response from the Spotify API.
     # The user should be redirected by the spotify service to this endpoint after they login and accept permissions
     # The url will include the "code" parameter which is an Authorization code
-    # print(request.args['code'])
+    print(request.args['code'])
     code = request.args['code']
 
     # Use that authorization code in the post request to the Spotify service we are also including
@@ -151,7 +201,7 @@ def spotify_redirect():
     response = requests.post(f"{AUTH_URL}/api/token", params=token_params, headers=headers)
 
     # Debug the response
-    # print(response.text)
+    #print(response.text)
 
     # Get the access_token out of the response
     data = response.json()
@@ -179,7 +229,9 @@ def spotify_redirect():
     #Get the users profile ID
     user_resp = requests.get(f"{BASE_URL}/v1/me", headers=req_headers)
     # Get the response from the spotify API using the correct token in the headers. This should return user information
+    # final_resp = requests.get(f"{BASE_URL}/v1/me/top/artists", params=query_params, headers=req_headers)
     final_resp = requests.get(f"{BASE_URL}/v1/me/top/artists", params=query_params, headers=req_headers)
+
 
     # Debug the final response
 
@@ -192,28 +244,28 @@ def spotify_redirect():
     # Utilize the data
     data = final_resp.json()
     user_id_reponse = user_resp.json()
-    # print(data)
-    # clean out sqlite before repopulating
-    try:
-        num_genres_deleted = db.session.query(user_genres).delete()
-        num_artists_deleted = db.session.query(user_artists).delete()
-        print(f'artists deleted: {num_artists_deleted}')
-        db.session.commit()
-    except:
-        db.session.rollback()
+    #print(data)
 
     for artist in data['items']:
         # print(artist['genres'])
         for genre in artist['genres']:
-            genre_data = user_genres(genre=genre)
+            genre_data = user_genres(genre=genre, spotify_user_id=user_id_reponse['id'])
             db.session.add(genre_data)
             db.session.commit()
-
+    
     for artist in data['items']:
-        name_data = user_artists(artist=artist["name"], artist_uri=artist["uri"])
-        db.session.add(name_data)
+        data_data = user_data(
+            artist=artist["name"], 
+            artist_followers=artist["followers"]['total'],
+            artist_popularity=artist["popularity"], 
+            artist_images=artist['images'][0]['url'], 
+            )
+        db.session.add(data_data)
         db.session.commit()
+
             
+    uid=user_id_reponse['id']
+    print(user_id_reponse['id'])
 
     # Get playlist information
     #playlist_resp = requests.get(f"{BASE_URL}/v1/me/playlists", headers=req_headers)
@@ -226,7 +278,7 @@ def spotify_redirect():
     # }
 
     #return jsonify(final_data)
-    return redirect(url_for('index'))
+    return redirect(url_for('test', token=token))
 
 
 """
@@ -243,24 +295,32 @@ def spotify_redirect():
 @app.route('/api/genres')
 def genres():
     uid = request.args.get('uid')
-    genres = user_genres.query.filter_by().all()
-    genre_list = [genre.genre for genre in genres]
-    #figure out how to turn genre into json from sqlalchemy object (list comprehension)
-    # return jsonify(json_list=[i.serialize for i in genres.all()])
+    genres = user_genres.query.distinct(user_genres.genre).all()
+    genre_list = []
+    for genre in genres:
+        genre_dict = {}
+        genre_dict['genre'] = genre.genre
+        genre_list.append(genre_dict)
     return jsonify(genre_list)
 
-
-@app.route('/api/artists')
+@app.route('/api/topartists')
 def artists():
+    uid = requests.args.get('uid')
+    artists = user_
+
+@app.route('/api/data')
+def data():
     uid = request.args.get('uid')
-    artists = user_artists.query.filter_by().all()
-    artist_list = []
-    for artist in artists:
-        artist_dict = {}
-        artist_dict['artist'] = artist.artist
-        artist_dict['uri'] = artist.artist_uri
-        artist_list.append(artist_dict)
-    return jsonify(artist_list)
+    data = user_data.query.filter_by().all()
+    data_list = []
+    for data in data:
+        data_dict = {}
+        data_dict['artist'] = data.artist
+        data_dict['followers'] = data.artist_followers   
+        data_dict['popularity'] = data.artist_popularity
+        data_dict['images'] = data.artist_images 
+        data_list.append(data_dict)
+    return jsonify(data_list)
 
 
 """
